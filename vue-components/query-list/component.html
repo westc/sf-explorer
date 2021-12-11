@@ -1,0 +1,121 @@
+<div>
+  <div class="text-center mb-3">
+    <div class="btn-group">
+      <button class="btn btn-lg btn-primary" @click="addQuery">
+        <i class="bi bi-cloud-plus-fill"></i>
+        Add Query
+      </button>
+    </div>
+  </div>
+
+  <!-- START: Queries Accordion -->
+  <div class="accordion" id="accordionQueries">
+
+    <template v-for="(query, queryIndex) in queries">
+      <div class="accordion-item">
+        <h2 class="accordion-header" :id="'queryHeading' + queryIndex">
+          <button class="accordion-button collapsed" ref="foldingButton" type="button" :data-bs-toggle="queryToggle" :data-bs-target="'#collapseQuery' + queryIndex">
+            <div class="input-group" style="margin-right: 2rem;">
+              <input
+                type="text"
+                class="form-control"
+                style="background-color: rgba(255,255,255,0.2);"
+                v-model="query.name"
+                @focus="disableQueryCollapse"
+                @blur="enableQueryCollapse"
+              />
+              <button
+                class="btn btn-success"
+                @click="executeQuery(queryIndex)"
+                @focus="disableQueryCollapse"
+                @blur="enableQueryCollapse"
+                :title="`${CTRL_OR_CMD_TEXT} + ENTER`"
+              >
+                <i class="bi bi-play-fill"></i>
+              </button>
+              <button
+                class="btn btn-danger"
+                @click="removeQuery(queryIndex)"
+                @focus="disableQueryCollapse"
+                @blur="enableQueryCollapse"
+              >
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </div>
+          </button>
+        </h2>
+        <div :id="'collapseQuery' + queryIndex" ref="foldingContent" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            
+            <table class="w-100">
+              <tr v-if="query.isJSOpen">
+                <th class="w-50">SOQL (Required)</th>
+                <th class="w-50">
+                  JavaScript (Optional)
+                  <button class="btn btn-secondary btn-sm active" @click="toggle(query, 'isJSOpen')">
+                    <i class="bi bi-eye-slash"></i>
+                  </button>
+                </th>
+              </tr>
+              <tr>
+                <td>
+                  <div style="height: 300px; border: 1px solid rgba(0,0,0,0.15); border-radius: 0.25em; overflow: hidden;">
+                    <monaco-editor
+                      v-model="query.soql"
+                      language="sql"
+                      line-numbers="yes"
+                      foldable="yes"
+                      ctm-order-cmd-execute="0"
+                      ctm-group-cmd-execute="operation"
+                      label-cmd-execute="Execute Query"
+                      bind-cmd-execute="KeyMod.CtrlCmd + KeyCode.Enter"
+                      @run-cmd-execute="executeQuery(queryIndex)"
+                    />
+                  </div>
+                </td>
+                <td v-if="query.isJSOpen">
+                  <div style="height: 300px; border: 1px solid rgba(0,0,0,0.15); border-radius: 0.25em; overflow: hidden;">
+                    <monaco-editor
+                      v-model="query.js"
+                      language="javascript"
+                      line-numbers="yes"
+                      foldable="yes"
+                      ctm-order-cmd-execute="0"
+                      ctm-group-cmd-execute="operation"
+                      label-cmd-execute="Execute Query"
+                      bind-cmd-execute="KeyMod.CtrlCmd + KeyCode.Enter"
+                      @run-cmd-execute="executeQuery(queryIndex)"
+                    />
+                  </div>
+                </td>
+                <td v-else style="width: 1px; vertical-align: top;">
+                  <div style="writing-mode: vertical-lr; transform: rotate(0deg); padding: 0.5em 0.25em; white-space: nowrap;">
+                    <a href="javascript://" @click="toggle(query, 'isJSOpen')">Show JavaScript</a>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <ag-grid
+              v-if="hasQueryResults[queryIndex]"
+              :column-defs="columnDefs[queryIndex]"
+              :row-data="rowData[queryIndex]"
+              height="400"
+            />
+
+            <div v-else-if="queryResults[queryIndex]?.error" class="red-error-display">
+              <h2>{{queryResults[queryIndex].error.name || 'Error'}}</h2>
+              <pre>{{queryResults[queryIndex].error.message}}</pre>
+              <pre>{{JSON.stringify(queryResults[queryIndex].error, null, 2)}}</pre>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+  <!-- END: Queries Accordion -->
+
+  <loading-overlay v-if="isQuerying">Querying Salesforce&hellip;</loading-overlay>
+</div>

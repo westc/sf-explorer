@@ -1,0 +1,28 @@
+<div ref="modal" class="modal" tabindex="-1">
+  <div :class="'modal-dialog modal-' + size">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">{{title}}</h5>
+      </div><!-- /.modal-header -->
+
+      <div class="modal-body">
+        <slot></slot>
+      </div><!-- /.modal-body -->
+
+      <div v-if="showFooter" class="modal-footer">
+        <template v-for="button in buttonObjects">
+          <button
+            :class="'btn btn-' + (button.type ?? 'secondary')"
+            v-on:click="$emit('click-button', button)"
+            :disabled="button.disabled"
+          >
+            <i v-if="button.icon" :class="'bi bi-' + button.icon"></i>
+            {{button.text}}
+          </button>
+        </template>
+      </div><!-- /.modal-footer -->
+
+    </div>
+  </div>
+</div>

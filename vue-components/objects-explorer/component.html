@@ -1,0 +1,14 @@
+<div style="height: 100%;">
+  <div v-if="allSObjectsError" class="red-error-display">
+    <h2>{{allSObjectsError.name || 'Error'}}</h2>
+    <pre>{{allSObjectsError.message}}</pre>
+    <pre>{{JSON.stringify(allSObjectsError, null, 2)}}</pre>
+  </div>
+  <ag-grid
+    v-else
+    :column-defs="allSObjectsColDefs"
+    :row-data="allSObjects"
+    height="100%"
+  />
+  <loading-overlay v-if="isLoading">Loading&hellip;</loading-overlay>
+</div>

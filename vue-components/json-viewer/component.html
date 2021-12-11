@@ -1,0 +1,20 @@
+<div>
+
+  <div v-if="canBeOpened" style="display: table; width: 100%;">
+    <div style="display: table-row;">
+      <div style="display: table-cell; width: 1px;" v-if="isOpen" @click="close">&#x25BC;</div>
+      <div style="display: table-cell; width: 1px;" v-if="!isOpen" @click="open">&#x25B6;</div>
+      <div style="display: table-cell;">{{closedView}}</div>
+    </div>
+    <div v-if="isOpen" v-for="prop in propertiesToShow" style="display: table-row;">
+      <div style="display: table-cell; text-align: right;">{JSON.stringify(prop.key}}:</div>
+      <div style="display: table-cell;">
+        <json-viewer :value="prop.value"></json-viewer>
+      </div>
+    </div>
+  </div>
+
+  <template v-else>
+    {{closedView}}
+  </template>
+</div>

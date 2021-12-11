@@ -1,0 +1,115 @@
+<div class="container-fluid">
+  <div class="text-center mb-3">
+    <button class="btn btn-lg btn-primary" @click="startNewConn">
+      <i class="bi bi-cloud-plus-fill"></i>
+      Create New Connection
+    </button>
+  </div>
+
+  <!-- START: Connections Accordion -->
+  <div class="accordion" id="accordionConns">
+
+    <template v-for="(conn, connIndex) in connections">
+      <div class="accordion-item">
+        <h2 class="accordion-header" :id="'connHeading' + connIndex">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" :data-bs-parent="'collapseConn' + connIndex" :data-bs-target="'#collapseConn' + connIndex">
+            {{conn.display}}
+          </button>
+        </h2>
+        <div :id="'collapseConn' + connIndex" class="accordion-collapse collapse" data-bs-parent="#accordionConns">
+          <div class="accordion-body">
+            <div class="mb-3">
+              <label :for="'txtDisplay' + connIndex" class="form-label">Display Name</label>
+              <input type="text" v-model="conn.display" class="form-control" :id="'txtDisplay' + connIndex" readonly>
+            </div>
+            <div class="mb-3">
+              <label :for="'txtUsername' + connIndex" class="form-label">Username</label>
+              <input type="text" v-model="conn.username" class="form-control" :id="'txtUsername' + connIndex" readonly>
+            </div>
+            <div class="mb-3">
+              <label :for="'txtPassword' + connIndex" class="form-label">Password</label>
+              <input type="password" v-model="conn.password" class="form-control" :id="'txtPassword' + connIndex" readonly>
+            </div>
+            <div class="mb-3">
+              <label :for="'txtToken' + connIndex" class="form-label">Security Token</label>
+              <input type="password" v-model="conn.token" class="form-control" :id="'txtToken' + connIndex" readonly>
+            </div>
+            <div class="mb-3">
+              <label :for="'txtLoginUrl' + connIndex" class="form-label">Login URL</label>
+              <input type="text" v-model="conn.loginUrl" class="form-control" :id="'txtLoginUrl' + connIndex" readonly>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary" @click="openConn(connIndex)">
+                <i class="bi bi-cloud-fill"></i>
+                Connect
+              </button>
+              <button class="btn btn-secondary" @click="editConn(connIndex)">
+                <i class="bi bi-pencil-fill"></i>
+                Edit
+              </button>
+              <button class="btn btn-info" @click="testConn(connIndex)">
+                <i class="bi bi-cloud-check-fill"></i>
+                Test
+              </button>
+              <button class="btn btn-danger" @click="deleteConn(connIndex)">
+                <i class="bi bi-trash-fill"></i>
+                Delete
+              </button>
+            </div><!-- /.btn-group -->
+          </div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+  <!-- END: Connections Accordion -->
+
+
+  <!-- START: Connection Modal -->
+  <modal
+    :title="connModalTitle"
+    :show="isEditingConn"
+    :buttons="connModalButtons"
+    size="xl"
+    @click-button="clickConnModalButton"
+  >
+    <div class="mb-3">
+      <label for="txtNewDisplay" class="form-label">Display Name</label>
+      <input type="text" v-model="currentConn.display" class="form-control" id="txtNewDisplay" placeholder="eg. Production Account">
+    </div>
+    <div class="mb-3">
+      <label for="txtNewUsername" class="form-label">Username</label>
+      <input type="text" v-model="currentConn.username" class="form-control" id="txtNewUsername" placeholder="eg. user@example.com">
+    </div>
+    <div class="mb-3">
+      <label for="txtNewPassword" class="form-label">Password</label>
+      <input type="password" v-model="currentConn.password" class="form-control" id="txtNewPassword" placeholder="********">
+    </div>
+    <div class="mb-3">
+      <label for="txtNewToken" class="form-label">Security Token</label>
+      <input type="password" v-model="currentConn.token" class="form-control" id="txtNewToken" placeholder="********">
+    </div>
+    <div class="mb-3">
+      <label for="txtNewLoginUrl" class="form-label">Login URL</label>
+      <input list="datalistLoginUrls" v-model="currentConn.loginUrl" class="form-control" id="txtNewLoginUrl" placeholder="eg. https://login.salesforce.com">
+      <datalist id="datalistLoginUrls">
+        <option v-for="LOGIN_URL in LOGIN_URLS" :value="LOGIN_URL" />
+      </datalist>
+    </div>
+  </modal>
+  <!-- END: Connection Modal -->
+
+
+  <!-- START:  Message Modal -->
+  <modal
+    :title="msgModalTitle"
+    :show="isShowingMsgModal"
+    :buttons="msgModalButtons"
+    @click-button="clickMsgModalButton"
+  >
+    <div style="white-space: pre-wrap;">{{msgModalContent}}</div>
+  </modal>
+  <!-- END:  Message Modal -->
+
+  <loading-overlay v-if="isShowingLoader">Loading&hellip;</loading-overlay>
+</div>

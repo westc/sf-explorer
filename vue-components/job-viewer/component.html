@@ -1,0 +1,8 @@
+<div style="height: 100%;">
+  <ag-grid
+    :column-defs="columnDefs"
+    :row-data="jobs"
+    height="100%"
+  />
+  <loading-overlay v-if="isLoading">Loading&hellip;</loading-overlay>
+</div>

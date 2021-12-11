@@ -1,0 +1,32 @@
+<div>
+
+  <div style="position: absolute; top: 0; left: 0; width: 20%; bottom: 0; padding: 8px;">
+
+    <div class="d-grid gap-2">
+      <template v-for="(page, pageIndex) in pages">
+        <button :class="getButtonClasses(pageIndex)" @click="select(pageIndex)">{{page.name}}</button>
+      </template>
+    </div>
+
+  </div>
+
+  <div style="position: absolute; top: 0; left: 20%; right: 0; bottom: 0; padding: 8px;">
+
+    <job-viewer
+      v-if="selectedPageId === 'job-viewer'"
+      :connection="connection"
+    ></job-viewer>
+
+    <objects-explorer
+      v-show="selectedPageId === 'objects-explorer'"
+      :connection="connection"
+    ></objects-explorer>
+
+    <query-list
+      v-show="selectedPageId === 'query-data'"
+      :connection="connection"
+    ></query-list>
+
+  </div>
+
+</div>

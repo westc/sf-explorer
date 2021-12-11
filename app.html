@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline'">
+    <meta http-equiv="X-Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline'">
+    <title>Salesforce Explorer</title>
+    <link href="app.css" rel="stylesheet">
+
+    <!-- START:  Bootstrap v5.1 -->
+    <link href="node_modules/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="node_modules/@popperjs/core/dist/umd/popper.min.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+    <!-- END:  Bootstrap v5.1 -->
+    
+    <!-- START:  Vue v2 -->
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <!-- END:  Vue v2 -->
+
+    <style>
+      @import url('node_modules/ag-grid-community/dist/styles/ag-grid.css');
+      @import url('node_modules/ag-grid-community/dist/styles/ag-theme-alpine.css');
+    </style>
+  </head>
+  <body>
+
+    <div id="vueApp" class="py-3" v-cloak>
+
+      <connection-list
+        v-if="isSelectingConnection"
+        :connections="connections"
+        @update="saveConnections"
+        @select="selectConnection"
+      ></connection-list>
+
+      <connection-explorer
+        v-if="!isSelectingConnection"
+        :connection="selectedConnection"
+      ></connection-explorer>
+
+    </div>
+    
+    <script src="app.js"></script>
+  </body>
+</html>
