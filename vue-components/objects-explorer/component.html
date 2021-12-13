@@ -1,14 +1,44 @@
 <div style="height: 100%;">
-  <div v-if="allSObjectsError" class="red-error-display">
-    <h2>{{allSObjectsError.name || 'Error'}}</h2>
-    <pre>{{allSObjectsError.message}}</pre>
-    <pre>{{JSON.stringify(allSObjectsError, null, 2)}}</pre>
+
+  <div v-show="view == 'allSObjects'" style="height: 100%;">
+    <error v-if="allSObjectsError" :value="allSObjectsError"></error>
+    <ag-grid
+      v-else
+      :column-defs="allSObjectsColDefs"
+      :row-data="allSObjects"
+      height="100%"
+    />
   </div>
-  <ag-grid
-    v-else
-    :column-defs="allSObjectsColDefs"
-    :row-data="allSObjects"
-    height="100%"
-  />
+
+  <template v-if="view === 'sobject'">
+    <button class="btn btn-primary" @click="setView('allSObjects')">Back To All Objects</button>
+
+    <!-- START: Tables Accordion -->
+    <div class="accordion" id="accordionTables">
+
+      <template v-for="(st, stIndex) in sobjectTables">
+        <div class="accordion-item">
+          <h2 class="accordion-header" :id="'stHeading' + stIndex">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" :data-bs-parent="'collapseTable' + stIndex" :data-bs-target="'#collapseTable' + stIndex">
+              {{st.title}}
+            </button>
+          </h2>
+          <div :id="'collapseTable' + stIndex" class="accordion-collapse collapse" data-bs-parent="#accordionTables">
+            <div class="accordion-body">
+              <ag-grid
+                :column-defs="st.colDefs"
+                :row-data="st.rows"
+                height="450"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
+
+    </div>
+    <!-- END: Tables Accordion -->
+  </template>
+
   <loading-overlay v-if="isLoading">Loading&hellip;</loading-overlay>
+
 </div>

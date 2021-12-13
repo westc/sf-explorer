@@ -3,15 +3,16 @@ const utils = require(`./utils`);
 const jsforce = require('jsforce');
 
 // Require our custom components.
+require(`./vue-components/ag-grid/component`);
+require(`./vue-components/connection-explorer/component`);
 require(`./vue-components/connection-list/component`);
+require(`./vue-components/error/component`);
+require(`./vue-components/job-viewer/component`);
+require(`./vue-components/loading-overlay/component`);
 require(`./vue-components/modal/component`);
 require(`./vue-components/monaco-editor/component`);
-require(`./vue-components/query-list/component`);
-require(`./vue-components/ag-grid/component`);
-require(`./vue-components/loading-overlay/component`);
-require(`./vue-components/connection-explorer/component`);
-require(`./vue-components/job-viewer/component`);
 require(`./vue-components/objects-explorer/component`);
+require(`./vue-components/query-list/component`);
 
 
 /** @type {{[k: string]: jsforce.Connection}} */

@@ -103,11 +103,7 @@
               height="400"
             />
 
-            <div v-else-if="queryResults[queryIndex]?.error" class="red-error-display">
-              <h2>{{queryResults[queryIndex].error.name || 'Error'}}</h2>
-              <pre>{{queryResults[queryIndex].error.message}}</pre>
-              <pre>{{JSON.stringify(queryResults[queryIndex].error, null, 2)}}</pre>
-            </div>
+            <error v-else-if="queryResults[queryIndex]" :value="queryResults[queryIndex]"></error>
 
           </div>
         </div>

@@ -320,8 +320,21 @@ function logout(connection, callback) {
  * @param {function(Error, jsforce.DescribeGlobalResult)} callback
  */
 function describeAll(conn, callback) {
-  const jsforceConn = jsforceConnsByUUID[conn.uuid];
+  const jsforceConn = globalThis.jsforceConnsByUUID[conn.uuid];
   jsforceConn.describeGlobal(callback);
+}
+
+
+/**
+ * 
+ * @param {SFE_Connection} conn
+ *   The active connection used to do a global describe.
+ * @param {string} type
+ * @param {function(Error, jsforce.DescribeSObjectResult)} callback
+ */
+function describe(conn, type, callback) {
+  const jsforceConn = globalThis.jsforceConnsByUUID[conn.uuid];
+  jsforceConn.describe(type, callback);
 }
 
 
@@ -435,6 +448,7 @@ module.exports = {
   getBulkApiJobs,
   normalizeResults,
   describeAll,
+  describe,
   IS_MAC,
   IS_WIN,
   CTRL_OR_CMD_DISPLAY,

@@ -1,0 +1,1 @@
+- Make ag-grid component automatically handle column typing, filtering and auto sizing.
