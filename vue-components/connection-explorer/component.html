@@ -1,6 +1,6 @@
 <div>
 
-  <div style="position: absolute; top: 0; left: 0; width: 20%; bottom: 0; padding: 8px;">
+  <div style="position: absolute; top: 0; left: 0; width: 20%; bottom: 0; padding: 8px; overflow: auto;">
 
     <div class="d-grid gap-2">
       <template v-for="(page, pageIndex) in pages">
@@ -10,7 +10,7 @@
 
   </div>
 
-  <div style="position: absolute; top: 0; left: 20%; right: 0; bottom: 0; padding: 8px;">
+  <div style="position: absolute; top: 0; left: 20%; right: 0; bottom: 0; padding: 8px; overflow: auto;">
 
     <job-viewer
       v-if="selectedPageId === 'job-viewer'"

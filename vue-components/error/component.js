@@ -13,5 +13,23 @@ exports.component = Vue.component(COMPONENT_NAME, {
   template: fs.readFileSync(TEMPLATE_PATH, {encoding: 'utf-8'}),
   
   props: ['value'],
+
+  computed: {
+    hasDistinctMessage() {
+      /** @type {Error} */
+      const value = this.value;
+      
+      return !`${value?.stack}`.includes(value?.message);
+    }
+  },
+
+  watch: {
+    value: {
+      handler(newValue) {
+        console.log(newValue);
+      },
+      immediate: true
+    }
+  },
   
 });

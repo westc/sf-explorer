@@ -8,7 +8,7 @@ button.btn.active, button.btn:active {
 }
 
 .loading-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -72,4 +72,8 @@ button.btn.active, button.btn:active {
   color: hsl(0, 100%, 75%);
   padding: 1em;
   text-shadow: 0.1em 0.1em 0.1em #000;
+}
+
+pre {
+  white-space: pre-wrap;
 }

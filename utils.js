@@ -4,6 +4,9 @@ const path = require('path');
 const jsforce = require('jsforce');
 
 
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+
+
 const IS_MAC = process.platform === 'darwin';
 const IS_WIN = process.platform === 'win32';
 const CTRL_OR_CMD_TEXT = IS_MAC ? 'CMD' : 'CTRL';
@@ -48,22 +51,274 @@ function parseHtmlBoolean(value, defaultValue) {
 
 
 /**
+ * @param {SFE_Connection} conn
+ * @param {SFE_QueryResult[]} queryResults
  * @param {number} queryIndex
- * @param {string} uuid
- * @param {function(Error, Object[]?, jsforce.QueryResult)} callback
+ * @param {(err: null|Error, records: Object[]|null) => any} callback
  */
-function executeQuery(queryIndex, uuid, callback) {
-  const conn = globalThis.appSettings.connections.find(c => c.uuid === uuid);
-  const { soql } = conn.queries[queryIndex];
-  const jsforceConn = globalThis.jsforceConnsByUUID[uuid];
-  jsforceConn.query(cleanSOQL(soql), {}, (err, res) => {
-    try {
-      callback(err, err ? null : normalizeResults(res), res);
+function executeQuery(conn, queryResults, queryIndex, callback) {
+  doCompoundQuery(conn, initQueryStores(conn, queryResults), queryIndex, callback);
+}
+
+
+// /**
+//  * @param {SFE_Connection} conn
+//  * @param {SFE_QueryResultStore[]} stores
+//  * @param {number} queryIndex
+//  * @param {function(Error, string)} callback
+//  */
+// function expandSOQL(conn, stores, queryIndex, callback) {
+//   const store = stores[queryIndex];
+//   let soql = cleanSOQL(store.soql);
+
+//   let varsToGet = [];
+//   let rgx = /:(\w+)|'(?:[^'\\]+|\\.)*'/g;
+//   for (let m of soql.matchAll(rgx)) {
+//     if ((m = m[1]) && !varsToGet.includes(m)) {
+//       varsToGet.push(m);
+//     }
+//   }
+
+//   if (varsToGet.length) {
+//     const vars = (new AsyncFunction(
+//       'getQueryResults',
+//       store.js
+//         + '\nreturn {'
+//         + varsToGet.map(v => `${v}: 'function' === typeof ${v} ? await ${v}() : ${v}`).join(', ')
+//         + '}'
+//     ))(async function(queryName, useNewestResults) {
+//       return await getQueryResults(conn, stores, queryName, useNewestResults);
+//     });
+    
+//     return soql.replace(rgx, (m, varToGet) => {
+//       return varToGet ? quoteSOQL(vars[varToGet]) : m;
+//     });
+//   }
+// }
+
+
+// /**
+//  * Gets the query results from another query as an array of objects.
+//  * @param {SFE_Connection} conn
+//  * @param {SFE_QueryResultStore[]} stores
+//  * @param {string} queryName
+//  *   The name of the query to pull from.
+//  * @param {boolean} [useNewestResults=false]
+//  *   Defaults to `false`.  If `false` and results are already available for this
+//  *   query, those results will be used, in all other cases the referenced query
+//  *   will be executed to retrieve the newest results.
+//  * @returns {Promise<Object[]>} 
+//  *   If `false` and results are already available for this query, those results
+//  *   will be returned, in all other cases the referenced query will be executed
+//  *   to retrieve the newest results that will be returned.
+//  */
+// async function getQueryResults(conn, stores, queryName, useNewestResults) {
+//   const store = stores.find(s => s.name === queryName);
+//   if (store.isUpToDate || (!useNewestResults && store.records.length)) {
+//     return store.records;
+//   }
+
+//   return new Promise((resolve, reject) => {
+//     doCompoundQuery(conn, stores, queryIndex, (err, soql) => {
+//       const store = stores[queryIndex];
+//       if (err) {
+//         store.error = err;
+//         store.records = null;
+//         store.isUpToDate = true;
+//         reject(err);
+//       }
+//       else {
+//         const jsforceConn = globalThis.jsforceConnsByUUID[conn.uuid];
+//         jsforceConn.query(soql, {}, (err, res) => {
+//           try {
+//             if (err) {
+//               throw err;
+//             }
+//             else {
+//               store.error = null;
+//               store.records = normalizeResults(res);
+//               store.isUpToDate = true;
+//               resolve(store.records);
+//             }
+//           }
+//           catch (e) {
+//             store.error = err;
+//             store.records = null;
+//             store.isUpToDate = true;
+//             reject(e);
+//           }
+//         });
+//       }
+//     });
+//   });
+
+
+
+//   store.isUpToDate = true;
+//   store.records = 
+// }
+
+/**
+ * 
+ * @param {SFE_Connection} conn
+ * @param {SFE_QueryResultStore[]} stores
+ * @param {number} queryIndex
+ * @param {(err: null|Error, records: Object[]|null) => any} callback
+ */
+function doCompoundQuery(conn, stores, queryIndex, callback) {
+  try {
+    const store = stores[queryIndex];
+
+    if (store.isUpToDate) {
+      callback(store.error, store.records);
     }
-    catch (e) {
-      console.trace(e);
+    else if (store.isInProgress) {
+      callback(new Error('Recursive queries are not allowed.'), null);
     }
+    else {
+      store.isInProgress = true;
+
+      function finish(soql) {
+        jsforceConnsByUUID[conn.uuid].query(cleanSOQL(soql), {}, (err, res) => {
+          store.isInProgress = false;
+          store.error = err;
+          store.isUpToDate = true;
+          store.records = err ? null : normalizeResults(res);
+          callback(store.error, store.records);
+        });
+      }
+      
+      const soql = store.soql;
+      const varsToEval = getSOQLVars(soql);
+      const varNames = Array.from(new Set(varsToEval.map(v => v.name)));
+      if (varNames.length) {
+        (new AsyncFunction(
+          'getQueryResults',
+          store.js
+            + '\nreturn {'
+            + varNames.map(v => `${v}: 'function' === typeof ${v} ? await ${v}() : ${v}`).join(', ')
+            + '}'
+        ))(getQueryResultsGetter(conn, stores))
+          .then(varValues => {
+            finish(fillSOQLVars(soql, varsToEval, varValues));
+          })
+          .catch(err => callback(err, null));
+      }
+      else {
+        finish(soql);
+      }
+    }
+  }
+  catch (e) {
+    callback(e, null);
+  }
+}
+
+
+/**
+ * @param {string} soql
+ * @param {CapturedSOQLVar[]} orderedVarsToFill
+ * @param {Object} varValues
+ * @returns {string}
+ */
+function fillSOQLVars(soql, orderedVarsToFill, varValues) {
+  for (let capturedVar of orderedVarsToFill.slice().reverse()) {
+    soql = soql.slice(0, capturedVar.start)
+      + quoteSOQL(varValues[capturedVar.name])
+      + soql.slice(capturedVar.end);
+  }
+  return soql;
+}
+
+
+/**
+ * @param {SFE_Connection} conn
+ * @param {SFE_QueryResultStore[]} stores
+ */
+function getQueryResultsGetter(conn, stores) {
+  return async function(queryName, useNewestResults) {
+    return new Promise((resolve, reject) => {
+      const innerQueryIndex = stores.findIndex(s => s.name === queryName);
+      const innerStore = stores[innerQueryIndex];
+      if (!useNewestResults && innerStore?.records?.length) {
+        resolve(innerStore.records);
+      }
+      else {
+        doCompoundQuery(conn, stores, innerQueryIndex, (err, records) => {
+          if (err) {
+            reject(err);
+          }
+          else {
+            resolve(records);
+          }
+        });
+      }
+    });
+  };
+}
+
+
+/**
+ * 
+ * @param {string} soql
+ * @returns {CapturedSOQLVar[]}
+ */
+function getSOQLVars(soql) {
+  const returnValue = [];
+  const rgx = /:(\w+)|'(?:[^'\\]+|\\.)*'|--[^\n\r]*|\/\*[^]*?\*\//g;
+  for (const arrMatch of soql.matchAll(rgx)) {
+    const name = arrMatch[1];
+    if (name) {
+      returnValue.push({
+        name,
+        start: arrMatch.index,
+        end: arrMatch.index + arrMatch[0].length,
+        soql
+      });
+    }
+  }
+  return returnValue;
+}
+
+
+/**
+ * @typedef {Object} CapturedSOQLVar
+ * @property {string} name
+ * @property {number} start
+ * @property {number} end
+ * @property {string} soql
+ */
+
+
+/**
+ * Gets the query stores that will be used to execute a compound query.
+ * @param {SFE_Connection} conn
+ * @param {SFE_QueryResult[]} queryResults
+ * @returns {SFE_QueryResultStore[]}
+ *   The query stores that will be used to execute a compount query.
+ */
+function initQueryStores(conn, queryResults) {
+  return conn.queries.map((q, i) => {
+    return Object.assign({isUpToDate: false}, queryResults[i], q);
   });
+}
+
+
+/**
+ * @param {*} value
+ * @returns {string}
+ */
+function quoteSOQL(value) {
+  if (Array.isArray(value)) {
+    return '(' + value.map(quoteSOQL).join(',') + ')';
+  }
+  if ('string' === typeof value) {
+    return "'" + JSON.stringify(value).slice(1, -1).replace(/'/g, "\\'") + "'";
+  }
+  if (value instanceof Date) {
+    return value.toJSON().slice(0, -5) + 'Z';
+  }
+  return JSON.stringify(value);
 }
 
 
@@ -405,12 +660,29 @@ function normalizeResults(results) {
  */
 
 /**
+ * @typedef {Object} SFE_QueryResult
+ * @property {Error} error
+ * @property {jsforce.QueryResult} records
+ */
+
+/**
  * @typedef {Object} SFE_Query
  * @property {string} name
  * @property {string} soql
  * @property {string} js
  * @property {boolean} isOpen
  * @property {boolean} isJSOpen
+ */
+
+/**
+ * @typedef {(
+ *   {
+ *     isUpToDate: boolean,
+ *     isInProgress: boolean
+ *   }
+ *   & SFE_QueryResult
+ *   & SFE_Query
+ * )} SFE_QueryResultStore
  */
 
 /**

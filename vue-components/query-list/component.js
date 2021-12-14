@@ -103,7 +103,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
       
       this.saveConnection();
       
-      utils.executeQuery(index, this.connection.uuid, (error, records) => {
+      utils.executeQuery(this.connection, this.queryResults, index, (error, records) => {
         this.isQuerying = false;
 
         this.queryResults[index] = { error, records };

@@ -1,5 +1,15 @@
 <div class="red-error-display">
   <h2>{{value.name || 'Error'}}</h2>
-  <pre>{{value.message}}</pre>
-  <pre>{{JSON.stringify(value, null, 2)}}</pre>
+
+  <template v-if="hasDistinctMessage">
+    <hr />
+    <pre>{{value.message}}</pre>
+  </template>
+
+  <template v-if="value.stack">
+    <hr />
+    <pre>{{value.stack}}</pre>
+  </template>
+
+  <pre v-if="!value.stack">{{JSON.stringify(value, null, 2)}}</pre>
 </div>

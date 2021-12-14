@@ -103,7 +103,7 @@
               height="400"
             />
 
-            <error v-else-if="queryResults[queryIndex]" :value="queryResults[queryIndex]"></error>
+            <error v-else-if="queryResults[queryIndex]?.error" :value="queryResults[queryIndex].error"></error>
 
           </div>
         </div>
