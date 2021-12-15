@@ -21,7 +21,7 @@ function createWindow () {
     }
   });
   win.maximize();
-  win.webContents.openDevTools({ mode: 'right' });
+  // win.webContents.openDevTools({ mode: 'right' });
   win.loadFile('app.html');
 }
 
@@ -58,3 +58,8 @@ ipcMain.on('get-remote-settings', event => {
  * @property {string} appDataPath
  * @property {string} userDataPath
  */
+
+
+ipcMain.on('toggle-dev-tools', event => {
+  event.sender.toggleDevTools();
+});

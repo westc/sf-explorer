@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { ipcRenderer } = require('electron');
 
+const {ColumnResizedEvent, ColumnMovedEvent, ColumnPinnedEvent} = require('ag-grid-community');
 /** @type {import('ag-grid-community')} */
 const AgGrid = require('ag-grid-community/dist/ag-grid-community');
 
@@ -19,6 +20,15 @@ function getValueAsString(value, args) {
   ) || '';
 }
 
+/**
+ * @typedef {Object} PersistentColDef
+ * @property {number} width
+ * @property {string} pinned
+ * @property {string} field
+ * @property {number} sortIndex
+ * @property {string} sort
+ */
+
 
 exports.component = Vue.component(COMPONENT_NAME, {
   
@@ -29,7 +39,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
       type: Object,
       default() {
         return {
-          flex: 1,
+          minWidth: 50,
           sortable: true,
           resizable: true,
           filter: true,
@@ -38,6 +48,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
     },
     columnDefs: Array,
     rowData: Array,
+    savedColDefs: Array,
     height: { default: 200 },
   },
 
@@ -53,6 +64,46 @@ exports.component = Vue.component(COMPONENT_NAME, {
   methods: {
     updateContainerHeight() {
       this.$refs.container.style.height = `${this.height}`.replace(/^\d+$/, '$&px');
+    },
+    /**
+     * @param {ColumnResizedEvent | ColumnPinnedEvent | ColumnMovedEvent} e 
+     */
+    emitUpdateColDefs(e) {
+      this.$emit(
+        'update-col-defs',
+        e.columnApi.getAllDisplayedColumns().map(x => ({
+          width: x.getActualWidth(),
+          pinned: x.getPinned(),
+          field: x.getColDef().field,
+          sortIndex: x.getSortIndex(),
+          sort: x.getSort(),
+        }))
+      );
+    },
+    mergeColDefs() {
+      const savedColDefsByField = (/** @type {PersistentColDef[]} */(this.savedColDefs ?? [])).reduce(
+        (savedColDefsByField, savedColDef, index) => {
+          savedColDefsByField[savedColDef.field] = Object.assign({index}, savedColDef);
+          return savedColDefsByField;
+        },
+        /** @type {{[k: string]: ({index: number} & PersistentColDef)}} */({})
+      );
+      
+      const indexedColDefs = [];
+      const extraColDefs = [];
+      for (let columnDef of this.columnDefs ?? []) {
+        let savedColDef = savedColDefsByField[columnDef.field];
+        if (savedColDef) {
+          let {index} = savedColDef;
+          delete savedColDef.index;
+          indexedColDefs[index] = Object.assign(columnDef, savedColDef);
+        }
+        else {
+          extraColDefs.push(columnDef);
+        }
+      }
+  
+      return indexedColDefs.filter(x => x).concat(extraColDefs);
     }
   },
 
@@ -67,22 +118,29 @@ exports.component = Vue.component(COMPONENT_NAME, {
     },
 
     columnDefs(columnDefs) {
-      this._agGrid.gridOptions.api.setColumnDefs(columnDefs);
+      this._agGrid.gridOptions.api.setColumnDefs(this.mergeColDefs());
     },
 
     defaultColDef(defaultColDef) {
-      throw new Error('Unhandled defaultColDef watcher')
+      throw new Error('Unhandled defaultColDef watcher');
     }
 
   },
 
   mounted() {
+    let self = this;
+
     // create the grid passing in the div to use together with the columns & data we want to use
-    let agGrid = this._agGrid = new AgGrid.Grid(this.$refs.container, {
-      columnDefs: this.columnDefs,
-      rowData: this.rowData,
-      defaultColDef: this.defaultColDef,
-      suppressContextMenu: false,
+    let agGrid = self._agGrid = new AgGrid.Grid(self.$refs.container, {
+      columnDefs: this.mergeColDefs(),
+      rowData: self.rowData,
+      defaultColDef: self.defaultColDef,
+      suppressDragLeaveHidesColumns: true,
+      suppressFieldDotNotation: true,
+      onColumnResized: self.emitUpdateColDefs,
+      onColumnPinned: self.emitUpdateColDefs,
+      onColumnMoved: self.emitUpdateColDefs,
+      onSortChanged: self.emitUpdateColDefs,
       onCellKeyDown(e) {
         // If Meta + C or Ctrl + C...
         if ((e.event.ctrlKey ^ e.event.metaKey) && e.event.keyCode === 67) {
@@ -135,6 +193,6 @@ exports.component = Vue.component(COMPONENT_NAME, {
       },
     });
     globalThis.agGrid = agGrid;
-    this.updateContainerHeight();
+    self.updateContainerHeight();
   },
 });

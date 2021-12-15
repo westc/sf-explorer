@@ -27,7 +27,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
   computed: {
 
     hasQueryResults() {
-      return this.queryResults.map(qr => qr?.records?.length > 0);
+      return this.queryResults.map(qr => qr?.records?.length >= 0);
     },
 
     /**
@@ -40,7 +40,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
             qr.records.reduce((byField, record) => {
               return Object.keys(record).reduce((byField, field) => {
                 if (!(field in byField)) {
-                  byField[field] = { field, maxWidth: 500 };
+                  byField[field] = { field, maxWidth: 500, headerName: field };
                 }
                 if (Array.isArray(record[field])) {
                   byField[field] = {
@@ -70,6 +70,12 @@ exports.component = Vue.component(COMPONENT_NAME, {
   
   methods: {
 
+    updateQueryColDefs(queryIndex, colDefs) {
+      /** @type {import('../../utils').SFE_Query} */
+      let query = this.queries[queryIndex];
+      query.colDefs = colDefs;
+    },
+
     addQuery() {
       /** @type {import('../utils').SFE_Query[]} */
       const queries = this.queries;
@@ -80,10 +86,6 @@ exports.component = Vue.component(COMPONENT_NAME, {
     removeQuery(index) {
       this.queries.splice(index, 1);
       this.queryResults.splice(index, 1);
-    },
-
-    log() {
-      console.log.apply(console, arguments);
     },
 
     enableQueryCollapse() {

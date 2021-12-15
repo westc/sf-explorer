@@ -16,6 +16,25 @@ const CTRL_DISPLAY = IS_MAC ? '\u2303' : 'CTRL';
 
 
 /**
+ * A tag function which can be used to create verbose regular expressions.
+ * @license Copyright 2021 - Chris West - MIT Licensed
+ * @see https://gist.github.com/westc/dc1b74018d278147e05cac3018acd8e5
+ */
+function vRegExp(input, ...fillins) {
+  let {raw} = input;
+  let content = raw[0];
+  for (let i = 1, l = raw.length; i < l; i++) {
+    content += fillins[i - 1] + raw[i];
+  }
+  content = content.replace(/^(\\[^])|\s+|\/\/.*|\/\*[^]*?\*\//g, '$1');
+  return new RegExp(
+    content.replace(/^(?:\(\?\w+\))+/g, ''),
+    content.replace(/\(\?(\w+)\)|[^(]+|\(/g, '$1')
+  );
+}
+
+
+/**
  * Generates a 36-character long universally unique identifier.
  * @returns {string}
  *   A unique hex identifer in this format
@@ -61,103 +80,6 @@ function executeQuery(conn, queryResults, queryIndex, callback) {
 }
 
 
-// /**
-//  * @param {SFE_Connection} conn
-//  * @param {SFE_QueryResultStore[]} stores
-//  * @param {number} queryIndex
-//  * @param {function(Error, string)} callback
-//  */
-// function expandSOQL(conn, stores, queryIndex, callback) {
-//   const store = stores[queryIndex];
-//   let soql = cleanSOQL(store.soql);
-
-//   let varsToGet = [];
-//   let rgx = /:(\w+)|'(?:[^'\\]+|\\.)*'/g;
-//   for (let m of soql.matchAll(rgx)) {
-//     if ((m = m[1]) && !varsToGet.includes(m)) {
-//       varsToGet.push(m);
-//     }
-//   }
-
-//   if (varsToGet.length) {
-//     const vars = (new AsyncFunction(
-//       'getQueryResults',
-//       store.js
-//         + '\nreturn {'
-//         + varsToGet.map(v => `${v}: 'function' === typeof ${v} ? await ${v}() : ${v}`).join(', ')
-//         + '}'
-//     ))(async function(queryName, useNewestResults) {
-//       return await getQueryResults(conn, stores, queryName, useNewestResults);
-//     });
-    
-//     return soql.replace(rgx, (m, varToGet) => {
-//       return varToGet ? quoteSOQL(vars[varToGet]) : m;
-//     });
-//   }
-// }
-
-
-// /**
-//  * Gets the query results from another query as an array of objects.
-//  * @param {SFE_Connection} conn
-//  * @param {SFE_QueryResultStore[]} stores
-//  * @param {string} queryName
-//  *   The name of the query to pull from.
-//  * @param {boolean} [useNewestResults=false]
-//  *   Defaults to `false`.  If `false` and results are already available for this
-//  *   query, those results will be used, in all other cases the referenced query
-//  *   will be executed to retrieve the newest results.
-//  * @returns {Promise<Object[]>} 
-//  *   If `false` and results are already available for this query, those results
-//  *   will be returned, in all other cases the referenced query will be executed
-//  *   to retrieve the newest results that will be returned.
-//  */
-// async function getQueryResults(conn, stores, queryName, useNewestResults) {
-//   const store = stores.find(s => s.name === queryName);
-//   if (store.isUpToDate || (!useNewestResults && store.records.length)) {
-//     return store.records;
-//   }
-
-//   return new Promise((resolve, reject) => {
-//     doCompoundQuery(conn, stores, queryIndex, (err, soql) => {
-//       const store = stores[queryIndex];
-//       if (err) {
-//         store.error = err;
-//         store.records = null;
-//         store.isUpToDate = true;
-//         reject(err);
-//       }
-//       else {
-//         const jsforceConn = globalThis.jsforceConnsByUUID[conn.uuid];
-//         jsforceConn.query(soql, {}, (err, res) => {
-//           try {
-//             if (err) {
-//               throw err;
-//             }
-//             else {
-//               store.error = null;
-//               store.records = normalizeResults(res);
-//               store.isUpToDate = true;
-//               resolve(store.records);
-//             }
-//           }
-//           catch (e) {
-//             store.error = err;
-//             store.records = null;
-//             store.isUpToDate = true;
-//             reject(e);
-//           }
-//         });
-//       }
-//     });
-//   });
-
-
-
-//   store.isUpToDate = true;
-//   store.records = 
-// }
-
 /**
  * 
  * @param {SFE_Connection} conn
@@ -179,12 +101,20 @@ function doCompoundQuery(conn, stores, queryIndex, callback) {
       store.isInProgress = true;
 
       function finish(soql) {
-        jsforceConnsByUUID[conn.uuid].query(cleanSOQL(soql), {}, (err, res) => {
-          store.isInProgress = false;
-          store.error = err;
-          store.isUpToDate = true;
-          store.records = err ? null : normalizeResults(res);
-          callback(store.error, store.records);
+        const jsforceConn = jsforceConnsByUUID[conn.uuid];
+        cleanSOQL(jsforceConn, soql, (err, soql) => {
+          if (err) {
+            callback(err, null);
+          }
+          else {
+            jsforceConn.query(soql, {}, (err, res) => {
+              store.isInProgress = false;
+              store.error = err;
+              store.isUpToDate = true;
+              store.records = err ? null : normalizeResults(res);
+              callback(store.error, store.records);
+            });
+          }
         });
       }
       
@@ -212,6 +142,99 @@ function doCompoundQuery(conn, stores, queryIndex, callback) {
   catch (e) {
     callback(e, null);
   }
+}
+
+
+/**
+ * Expands the given SOQL and cleans it so that it can be passed directly to
+ * Salesforce.
+ * @param {jsforce.Connection} jsforceConn
+ * @param {string} soql
+ * @param {(err: null|Error, soql: string|null) => any} callback
+ */
+function cleanSOQL(jsforceConn, soql, callback) {
+  /** @type {({start: number, sobject: string, end: number})[]} */
+  const stars = [];
+
+  // Capture all of the asterisks and the preceding sobject names for later use.
+  soql = soql.replace(
+    vRegExp`
+      (?g)(?i)                     // Global flag
+      ('(?:[^\\']+|\\.)*')         // Capture Group: string
+      |
+      (?:(\w+)\s*\.\s*\*)          // Capture Group: starObject
+      |
+      --[^\r\n]+                   // Single-line comment
+      |
+      /\*[^]*?\*/                  // Multiline comment  
+    `,
+    function(m, string, starObject, position) {
+      if (starObject) {
+        stars.push({
+          start: position,
+          end: position + m.length,
+          sobject: starObject
+        });
+      }
+      else if (!string) {
+        return m.replace(/[^\r\n]+/g, c => ' '.repeat(c.length));
+      }
+      return m;
+    }
+  );
+
+  // Remove extra whitespace (some of which can come from removed comments).
+  soql = soql.replace(
+    vRegExp`
+      (?g)
+      '(?:[^\\']+|\\.)*' // String
+      |
+      (\s+)              // Capture Group: whitespaces
+    `,
+    (m, whitespaces) => whitespaces ? ' ' : m
+  ).trim();
+
+  /**
+   * Acts as a cache keeping track of the Salesforce descriptions for objects
+   * that were already pulled during this request.
+   * @type {{[k: string]: jsforce.DescribeSObjectResult}}
+   */
+  const descriptions = {};
+
+  /**
+   * Expands all of the asterisks from the end of `soql` back to the beginning.
+   */
+  function expandFromEnd() {
+    let star = stars.pop();
+    if (star) {
+      const sobjectUpper = star.sobject.toUpperCase();
+      let description = descriptions[sobjectUpper];
+      if (description) {
+        soql = soql.slice(0, star.start)
+          + description.fields.map(x => `${star.sobject}.${x.name}`).join(',')
+          + soql.slice(star.end);
+        expandFromEnd();
+      }
+      else {
+        jsforceConn.describe(sobjectUpper, (err, result) => {
+          if (err) {
+            callback(err, null);
+          }
+          else {
+            descriptions[sobjectUpper] = result;
+            stars.push(star);
+            expandFromEnd();
+          }
+        });
+      }
+    }
+    else {
+      callback(null, soql);
+    }
+  }
+
+  // Starts expanding `soql` from the end back to the beginning.
+  expandFromEnd();
 }
 
 
@@ -265,7 +288,7 @@ function getQueryResultsGetter(conn, stores) {
  */
 function getSOQLVars(soql) {
   const returnValue = [];
-  const rgx = /:(\w+)|'(?:[^'\\]+|\\.)*'|--[^\n\r]*|\/\*[^]*?\*\//g;
+  const rgx = /\[(\w+)\]|'(?:[^'\\]+|\\.)*'|--[^\n\r]*|\/\*[^]*?\*\//g;
   for (const arrMatch of soql.matchAll(rgx)) {
     const name = arrMatch[1];
     if (name) {
@@ -323,23 +346,6 @@ function quoteSOQL(value) {
 
 
 /**
- * Removes SQL like comments for `soql`.
- * @param {string} soql
- *   SOQL string that needs to be cleaned.
- * @returns {string}
- *   A copy of `soql` without comments.
- */
-function cleanSOQL(soql) {
-  return soql.replace(
-    /--.*$|\/\*[^]*?\*\/|('(?:[^']+|'')*'|"(?:[^"]+|"")*")/gm,
-    (m, string) => {
-      return string ?? m.replace(/./g, ' ');
-    }
-  );
-}
-
-
-/**
  * Reads from main.js to get the remote settings which has to exist there
  * because a reference to `electron` is needed.
  * @returns {import('./background').SFE_RemoteSettings}
@@ -350,6 +356,11 @@ function getRemoteSettings() {
     throw error;
   }
   return returnValue;
+}
+
+
+function toggleDevTools() {
+  ipcRenderer.send('toggle-dev-tools');
 }
 
 
@@ -431,6 +442,7 @@ function validateConnectionQuery(connQuery, index) {
       isOpen: true,
       isJSOpen: false,
       uuid: uuidv4(),
+      colDefs: [],
     },
     connQuery
   );
@@ -672,6 +684,8 @@ function normalizeResults(results) {
  * @property {string} js
  * @property {boolean} isOpen
  * @property {boolean} isJSOpen
+ * @property {string} uuid
+ * @property {import('./vue-components/ag-grid/component').PersistentColDef[]} colDefs
  */
 
 /**
@@ -709,7 +723,6 @@ module.exports = {
   saveConnection,
   saveConnections,
   executeQuery,
-  cleanSOQL,
   validateAppSettings,
   validateConnection,
   validateConnectionQuery,
@@ -721,6 +734,8 @@ module.exports = {
   normalizeResults,
   describeAll,
   describe,
+  toggleDevTools,
+  vRegExp,
   IS_MAC,
   IS_WIN,
   CTRL_OR_CMD_DISPLAY,

@@ -2,6 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const utils = require('../../utils');
 
+const DEFAULT_DATA = {
+  pages: [
+    { name: 'Job Viewer', id: 'job-viewer' },
+    { name: 'Objects Explorer', id: 'objects-explorer' },
+    { name: 'Query Data', id: 'query-data' },
+    { name: 'Toggle Dev Tools', id: 'toggle-dev-tools' },
+  ].map(p => Object.assign({isSelected: false}, p))
+};
+
+/**
+ * @typedef {Object} PROPERTIES
+ * @property {import('../../utils').SFE_Connection} connection
+ * 
+ * @typedef {DEFAULT_DATA & PROPERTIES} ThisComponent
+ */
+
 
 // Uses this file's directory name as the component name.
 const COMPONENT_NAME = path.basename(__dirname);
@@ -15,13 +31,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
   props: ['connection'],
 
   data() {
-    return {
-      pages: [
-        { name: 'Job Viewer', id: 'job-viewer' },
-        { name: 'Objects Explorer', id: 'objects-explorer' },
-        { name: 'Query Data', id: 'query-data' },
-      ].map(p => Object.assign({isSelected: false}, p))
-    };
+    return JSON.parse(JSON.stringify(DEFAULT_DATA));
   },
 
   computed: {
@@ -35,7 +45,17 @@ exports.component = Vue.component(COMPONENT_NAME, {
 
   methods: {
     select(pageIndex) {
-      this.pages.forEach((p, i) => p.isSelected = i === pageIndex);
+      /** @type {ThisComponent} */
+      const self = this;
+
+      self.pages.forEach((p, i) => {
+        let isSelected = i === pageIndex;
+        if (isSelected && p.id === 'toggle-dev-tools') {
+          isSelected = false;
+          utils.toggleDevTools();
+        }
+        p.isSelected = isSelected;
+      });
     },
     getButtonClasses(pageIndex) {
       return `btn btn-secondary + ${this.pages[pageIndex].isSelected ? ' active' : ''}`;
