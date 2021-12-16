@@ -48,14 +48,14 @@ exports.component = Vue.component(COMPONENT_NAME, {
       /** @type {ThisComponent} */
       const self = this;
 
-      self.pages.forEach((p, i) => {
-        let isSelected = i === pageIndex;
-        if (isSelected && p.id === 'toggle-dev-tools') {
-          isSelected = false;
-          utils.toggleDevTools();
-        }
-        p.isSelected = isSelected;
-      });
+      if (self.pages[pageIndex].id === 'toggle-dev-tools') {
+        utils.toggleDevTools();
+      }
+      else {
+        self.pages.forEach((p, i) => {
+          p.isSelected = i === pageIndex;
+        });
+      }
     },
     getButtonClasses(pageIndex) {
       return `btn btn-secondary + ${this.pages[pageIndex].isSelected ? ' active' : ''}`;
