@@ -66,7 +66,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
           { field: 'name', headerName: 'Name' },
           { field: 'value', headerName: 'Value' },
         ],
-        rows: Object.entries(sobject).reduce(
+        rows: Object.entries(utils.flattenObjectKeys(sobject)).reduce(
           (rows, [name, value]) => {
             if (Array.isArray(value)) {
               const colDefsById = {};
@@ -74,7 +74,8 @@ exports.component = Vue.component(COMPONENT_NAME, {
                 for (let rowKey of Object.keys(row)) {
                   if (!(rowKey in colDefsById)) {
                     colDefsById[rowKey] = {
-                      field: rowKey
+                      field: rowKey,
+                      headerName: rowKey,
                     };
                   }
                 };

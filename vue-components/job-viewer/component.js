@@ -32,7 +32,6 @@ exports.component = Vue.component(COMPONENT_NAME, {
                 colDefs[key] = Object.assign(
                   Object(colDefs[key]),
                     {
-                    supressFieldDotNotation: true,
                     field: key,
                     resizable: true,
                     headerName: key,
