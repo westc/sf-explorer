@@ -1,16 +1,19 @@
 <div>
 
-  <div style="position: absolute; top: 0; left: 0; width: 20%; bottom: 0; padding: 8px; overflow: auto;">
+  <div style="position: absolute; top: 0; left: 0; width: 200px; bottom: 0; padding: 8px; overflow: auto;">
 
     <div class="d-grid gap-2">
       <template v-for="(page, pageIndex) in pages">
-        <button :class="getButtonClasses(pageIndex)" @click="select(pageIndex)">{{page.name}}</button>
+        <button :class="getButtonClasses(pageIndex)" @click="select(pageIndex)">
+          <i v-if="page.icon" :class="'bi bi-' + page.icon"></i>
+          {{page.name}}
+        </button>
       </template>
     </div>
 
   </div>
 
-  <div style="position: absolute; top: 0; left: 20%; right: 0; bottom: 0; padding: 8px; overflow: auto;">
+  <div style="position: absolute; top: 0; left: 200px; right: 0; bottom: 0; padding: 8px; overflow: auto;">
 
     <job-viewer
       v-if="selectedPageId === 'job-viewer'"

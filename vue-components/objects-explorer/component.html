@@ -6,6 +6,8 @@
       v-else
       :column-defs="allSObjectsColDefs"
       :row-data="allSObjects"
+      :saved-col-defs="savedColDefsByName.__root__"
+      @update-col-defs="updateSavedColDefs('__root__', $event)"
       height="100%"
     />
   </div>
@@ -28,6 +30,8 @@
               <ag-grid
                 :column-defs="st.colDefs"
                 :row-data="st.rows"
+                :saved-col-defs="savedColDefsByName[st.title]"
+                @update-col-defs="updateSavedColDefs(st.title, $event)"
                 height="450"
               />
             </div>

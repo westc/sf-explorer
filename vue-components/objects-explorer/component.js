@@ -18,10 +18,11 @@ const DEFAULT_DATA = {
   /** @type {import('jsforce').DescribeSObjectResult} */
   sobject: null,
 
-
   isLoading: false,
   /** @type {"allSObjects"|"sobject"} */
   view: null,
+
+  savedColDefsByName: {},
 };
 
 /**
@@ -106,15 +107,16 @@ exports.component = Vue.component(COMPONENT_NAME, {
       return [
         {
           headerName: '',
-          field: 'name',
+          field: 'view-button',
           type: 'button',
           cellRendererParams: {
             text: 'View',
             onClick(params) {
+              console.log(params);
               self.isLoading = true;
               utils.describe(
                 self.connection,
-                params.value,
+                params.data.name,
                 (sobjectError, sobject) => {
                   Object.assign(self, {
                     isLoading: false,
@@ -186,6 +188,10 @@ exports.component = Vue.component(COMPONENT_NAME, {
       /** @type {ThisComponent} */
       const self = this;
       self.view = newView;
+    },
+    updateSavedColDefs(tableName, savableColDefs) {
+      this.savedColDefsByName[tableName] = savableColDefs;
+      utils.saveGeneralColDef(savableColDefs, `object-explorer/${tableName}`);
     }
   },
 
@@ -193,6 +199,15 @@ exports.component = Vue.component(COMPONENT_NAME, {
   },
 
   mounted() {
+    /** @type {import('../../utils').SFE_AppSettings} */
+    const appSettings = globalThis.appSettings;
+    this.savedColDefsByName = Object.entries(appSettings.generalColDefs).reduce(
+      (savedColDefsByName, [tableName, savedColDef]) => {
+        savedColDefsByName[tableName.replace(/^object-explorer\//, '')] = savedColDef;
+        return savedColDefsByName;
+      },
+      {}
+    );
     this.isLoading = true;
     utils.describeAll(this.connection, (allSObjectsError, res) => {
       Object.assign(this, {

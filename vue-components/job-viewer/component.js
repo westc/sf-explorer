@@ -18,6 +18,7 @@ exports.component = Vue.component(COMPONENT_NAME, {
     return {
       jobs: [],
       isLoading: false,
+      savedColDefsByName: {},
     };
   },
 
@@ -61,7 +62,24 @@ exports.component = Vue.component(COMPONENT_NAME, {
   watch: {
   },
 
+  methods: {
+    updateSavedColDefs(tableName, savableColDefs) {
+      this.savedColDefsByName[tableName] = savableColDefs;
+      utils.saveGeneralColDef(savableColDefs, `job-viewer/${tableName}`);
+    }
+  },
+
   mounted() {
+    /** @type {import('../../utils').SFE_AppSettings} */
+    const appSettings = globalThis.appSettings;
+    this.savedColDefsByName = Object.entries(appSettings.generalColDefs).reduce(
+      (savedColDefsByName, [tableName, savedColDef]) => {
+        savedColDefsByName[tableName.replace(/^job-viewer\//, '')] = savedColDef;
+        return savedColDefsByName;
+      },
+      {}
+    );
+    
     this.isLoading = true;
     utils.getBulkApiJobs(this.connection, (jobs) => {
       this.isLoading = false;

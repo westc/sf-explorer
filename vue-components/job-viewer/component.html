@@ -2,6 +2,8 @@
   <ag-grid
     :column-defs="columnDefs"
     :row-data="jobs"
+    :saved-col-defs="savedColDefsByName.__root__"
+    @update-col-defs="updateSavedColDefs('__root__', $event)"
     height="100%"
   />
   <loading-overlay v-if="isLoading">Loading&hellip;</loading-overlay>

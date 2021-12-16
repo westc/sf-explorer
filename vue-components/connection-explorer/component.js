@@ -4,10 +4,10 @@ const utils = require('../../utils');
 
 const DEFAULT_DATA = {
   pages: [
-    { name: 'Job Viewer', id: 'job-viewer' },
-    { name: 'Objects Explorer', id: 'objects-explorer' },
-    { name: 'Query Data', id: 'query-data' },
-    { name: 'Toggle Dev Tools', id: 'toggle-dev-tools' },
+    { name: 'Job Viewer', id: 'job-viewer', icon: 'binoculars-fill' },
+    { name: 'Objects Explorer', id: 'objects-explorer', icon: 'globe2' },
+    { name: 'Query Data', id: 'query-data', icon: 'search' },
+    { name: 'Toggle Dev Tools', id: 'toggle-dev-tools', icon: 'tools' },
   ].map(p => Object.assign({isSelected: false}, p))
 };
 

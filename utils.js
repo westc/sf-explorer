@@ -447,6 +447,7 @@ function validateAppSettings(appSettings) {
     {
       connections: [],
       isEncrypted: false,
+      generalColDefs: {}
     },
     Object(appSettings)
   );
@@ -543,6 +544,14 @@ function saveConnections(connections) {
     }
     appSettings.connections[index] = connection;
   }
+  return saveAppSettings();
+}
+
+
+function saveGeneralColDef(colDef, name) {
+  /** @type {SFE_AppSettings} */
+  const appSettings = globalThis.appSettings;
+  appSettings.generalColDefs[name] = colDef;
   return saveAppSettings();
 }
 
@@ -765,6 +774,7 @@ function normalizeResults(results) {
  * @typedef {Object} SFE_AppSettings
  * @property {SFE_Connection[]} connections
  * @property {boolean} isEncrypted
+ * @property {Object} generalColDefs
  */
 
 module.exports = {
@@ -773,6 +783,7 @@ module.exports = {
   saveAppSettings,
   saveConnection,
   saveConnections,
+  saveGeneralColDef,
   executeQuery,
   validateAppSettings,
   validateConnection,
