@@ -16,6 +16,57 @@ const CTRL_DISPLAY = IS_MAC ? '\u2303' : 'CTRL';
 
 
 /**
+ * Takes a value in and attempts to flatten the keys of all underlying objects.
+ * @param {any} value
+ *   Structure whose underlying keys should be flattened.
+ * @returns {any}
+ *   If `value` is array-like then a new array will be returned with all
+ *   underlying items recursively flattened.  If `value` is an iterable object
+ *   then a new object will be returned with all keys flattened therein and also
+ *   in any objects that are contained in underlying array-like structures.  In
+ *   all other cases `value` will simply be returned.
+ */
+function flattenObjectKeys(value) {
+  function recurse(seen, value, path, root) {
+    // If is an iterable object or an array....
+    if (value && 'object' === typeof value && !(value instanceof Date)) {
+      // Protect against recursive structures.
+      if (seen.includes(value)) {
+        throw new Error('Cannot flatten recursive structures.');
+      }
+      seen = seen.concat([value]);
+
+      // If is an iterable object...
+      if ('function' === typeof value[Symbol.iterator]) {
+        const newArray = [];
+        for (let [k, v] of Object.entries(value)) {
+          newArray[k] = recurse(seen, v);
+        }
+        if (root) {
+          root[path.join('.')] = newArray;
+        }
+        return newArray;
+      }
+      // If is an array... 
+      else {
+        root ??= {};
+        for (let [k, v] of Object.entries(value)) {
+          recurse(seen, v, path ? path.concat([k]) : [k], root);
+        }
+        return root;
+      }
+    }
+  
+    if (root) {
+      root[path.join('.')] = value;
+    }
+    return value;
+  }
+  return recurse([], value);
+}
+
+
+/**
  * A tag function which can be used to create verbose regular expressions.
  * @license Copyright 2021 - Chris West - MIT Licensed
  * @see https://gist.github.com/westc/dc1b74018d278147e05cac3018acd8e5
@@ -736,6 +787,7 @@ module.exports = {
   describe,
   toggleDevTools,
   vRegExp,
+  flattenObjectKeys,
   IS_MAC,
   IS_WIN,
   CTRL_OR_CMD_DISPLAY,
